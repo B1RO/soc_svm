@@ -7,10 +7,44 @@ import cvxopt.solvers
 
 import matplotlib.pyplot as plt
 
-#class SVM(object):
+class SVM(object):
 
-    #def train(self, X, y):
+    def train(self, X, y):
+        n_samples, n_features = X.shape
 
+        # Gram matrix
+        K = np.dot(X,X.T);
+        K = cvxopt.matrix(K);
+
+        # Hessian
+        P = np.outer(y, y.T) * K
+        P = cvxopt.matrix(P);
+
+        # RHS
+        q = cvxopt.matrix(np.ones(n_samples) * -1)
+
+        # Equality constraint
+        A = cvxopt.matrix(y, (1,n_samples))
+        b = cvxopt.matrix(0.0)
+
+        # Inequality constraint
+        G = cvxopt.matrix(np.diag(np.ones(n_samples) * -1))
+        h = cvxopt.matrix(np.zeros(n_samples))
+
+        # Solve QP problem
+        solution = cvxopt.solvers.qp(P, q, G, h, A, b)
+
+        # Lagrange multipliers
+        a = np.ravel(solution['x'])
+        print(a)
+
+        # Support vectors
+        sv = a > 1e-5
+        print(sv)
+
+        #TODO reconstruction formulas
+
+    #TODO implement predict    
     #def predict(self, X, y):
 
 def loadData(file):
@@ -26,7 +60,9 @@ def plotData(X, y):
     plt.show()
 
 if __name__ == "__main__":
-    #svm = SVM()
+    svm = SVM()
 
     X, y = loadData("data/small")
     #plotData(X, y)
+
+    svm.train(X, y)

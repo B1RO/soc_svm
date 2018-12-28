@@ -7,18 +7,32 @@ import cvxopt.solvers
 
 import matplotlib.pyplot as plt
 
+def buildHessian(X, y):
+    # Gram matrix
+    K = np.dot(X, X.T)
+    K = cvxopt.matrix(K)
+
+    # Hessian matrix
+    H = np.outer(y, y.T) * K
+    H = cvxopt.matrix(H)
+    return H
+
+def buildHessian2(X, y):
+    Y = np.diag(y)
+    H = np.dot(np.dot(np.dot(Y, X), X.T), Y)
+    H = cvxopt.matrix(H)
+    return H
+
 class SVM(object):
+    def buildHessian(X, y):
+        Y = np.diag(y)
+        H = np.dot(np.dot(np.dot(Y, X), X.T), Y);
 
     def train(self, X, y):
         n_samples, n_features = X.shape
 
-        # Gram matrix
-        K = np.dot(X,X.T);
-        K = cvxopt.matrix(K);
-
-        # Hessian
-        P = np.outer(y, y.T) * K
-        P = cvxopt.matrix(P);
+        P = buildHessian(X, y)
+        # P = buildHessian2(X, y)
 
         # RHS
         q = cvxopt.matrix(np.ones(n_samples) * -1)

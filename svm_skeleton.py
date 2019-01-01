@@ -1,4 +1,5 @@
 import sklearn
+from cvxopt.base import matrix
 from sklearn import datasets
 
 import numpy as np
@@ -6,6 +7,7 @@ import cvxopt
 import cvxopt.solvers
 
 import matplotlib.pyplot as plt
+
 
 def buildHessian(X, y):
     # Gram matrix
@@ -17,11 +19,13 @@ def buildHessian(X, y):
     H = cvxopt.matrix(H)
     return H
 
+
 def buildHessian2(X, y):
     Y = np.diag(y)
     H = np.dot(np.dot(np.dot(Y, X), X.T), Y)
     H = cvxopt.matrix(H)
     return H
+
 
 class SVM(object):
     def buildHessian(X, y):
@@ -38,8 +42,8 @@ class SVM(object):
         q = cvxopt.matrix(np.ones(n_samples) * -1)
 
         # Equality constraint
-        A = cvxopt.matrix(y, (1,n_samples))
-        b = cvxopt.matrix(0.0)
+        A = cvxopt.matrix(y, (1, n_samples))
+        b: matrix = cvxopt.matrix(0.0)
 
         # Inequality constraint
         G = cvxopt.matrix(np.diag(np.ones(n_samples) * -1))
@@ -50,33 +54,50 @@ class SVM(object):
 
         # Lagrange multipliers
         a = np.ravel(solution['x'])
-        print(a)
-
         # Support vectors
         sv = a > 1e-5
-        print(sv)
 
-        #TODO reconstruction formulas
+        # TODO reconstruction formulas
 
-    #TODO implement predict    
-    #def predict(self, X, y):
+        # normal of separating hyperplane
+        # algorithmically
+        normal = np.sum([a[i]*y[i]*X[i] for i in range(0, len(X))],axis=0)
+        # using matrix algebra
+        #normal = np.dot(np.dot(np.diag(a), X).T, y)
+
+        indexset = [index for index, value in enumerate(sv) if value]
+        shift = 1 / (len(indexset)) * np.sum([np.dot(normal, X[i].T) - y[i] for i in indexset])
+        self.normal = normal
+        self.shift = shift
+        return shift, normal
+
+    # TODO implement predict
+    def predict(self, X):
+        return (np.dot(self.normal,X.T) - self.shift) >= 0
+
 
 def loadData(file):
     data = sklearn.datasets.load_svmlight_file(file);
     return np.array(data[0].todense()), data[1]
 
+
 def plotData(X, y):
     class1 = y > 0
     X1 = X[class1]
     X2 = X[~class1]
-    plt.plot(X1[:,0], X1[:,1], "ro")
-    plt.plot(X2[:,0], X2[:,1], "bo")
+    plt.plot(X1[:, 0], X1[:, 1], "ro")
+    plt.plot(X2[:, 0], X2[:, 1], "bo")
     plt.show()
+
 
 if __name__ == "__main__":
     svm = SVM()
 
     X, y = loadData("data/small")
+
+    w, b = svm.train(X, y)
     #plotData(X, y)
 
-    svm.train(X, y)
+
+    for a,b in zip(X,y):
+        print(svm.predict(a))

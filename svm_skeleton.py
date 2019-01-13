@@ -64,17 +64,17 @@ class SVM(object):
         self.reconstructOld(X, y)
 
     def predict(self, x):
-        return (self.w* np.matrix(x).T) - self.b
+        return (self.w @ x.T) - self.b
 
     def reconstructOld(self, X, y):
         sv = self.lagrange_multipliers > 1e-5
         self.w = np.sum([self.lagrange_multipliers[i] * y[i] * X[i] for i in range(0, len(X))], axis=0)
         self.b = np.sum([np.dot(X[i],self.w) - y[i] for i, x in enumerate(sv) if x]) / sum(sv)
-
+        
     def reconstruct(self, X, y):
-        self.w = np.matrix(y) * np.diag(self.lagrange_multipliers) * np.matrix(X)
+        self.w = np.asarray(y @ np.diag(self.lagrange_multipliers) @ np.matrix(X)).flatten()
         sv = self.lagrange_multipliers > 1e-5
-        self.b = ((np.matrix(X[sv]) * self.w.T) - np.matrix(y[sv]).T).sum() / sv.sum()
+        self.b = ((X[sv] @ self.w.T) - y[sv].T).sum() / sv.sum()
 
 
 def loadData(file):
@@ -98,7 +98,6 @@ if __name__ == "__main__":
 
     svm.train(X, y)
 
-    for x in X:
-        print(svm.predict(x).item())
+    Predicted = [svm.predict(x).item() for x in X]
 
 

@@ -28,6 +28,10 @@ def buildHessian2(X, y):
 
 
 class SVM(object):
+    lagrange_multipliers = []
+    w = np.array([])
+    b = 0
+
     def buildHessian(X, y):
         Y = np.diag(y)
         H = np.dot(np.dot(np.dot(Y, X), X.T), Y);
@@ -53,27 +57,24 @@ class SVM(object):
         solution = cvxopt.solvers.qp(P, q, G, h, A, b)
 
         # Lagrange multipliers
-        a = np.ravel(solution['x'])
+        self.lagrange_multipliers = np.ravel(solution['x'])
         # Support vectors
-        sv = a > 1e-5
+        sv = self.lagrange_multipliers > 1e-5
 
-        # TODO reconstruction formulas
+        self.reconstructOld(X, y)
 
-        # normal of separating hyperplane
-        # algorithmically
-        normal = np.sum([a[i]*y[i]*X[i] for i in range(0, len(X))],axis=0)
-        # using matrix algebra
-        #normal = np.dot(np.dot(np.diag(a), X).T, y)
+    def predict(self, x):
+        return (self.w @ x.T) - self.b
 
-        indexset = [index for index, value in enumerate(sv) if value]
-        shift = 1 / (len(indexset)) * np.sum([np.dot(normal, X[i].T) - y[i] for i in indexset])
-        self.normal = normal
-        self.shift = shift
-        return shift, normal
-
-    # TODO implement predict
-    def predict(self, X):
-        return (np.dot(self.normal,X.T) - self.shift) >= 0
+    def reconstructOld(self, X, y):
+        sv = self.lagrange_multipliers > 1e-5
+        self.w = np.sum([self.lagrange_multipliers[i] * y[i] * X[i] for i in range(0, len(X))], axis=0)
+        self.b = np.sum([np.dot(X[i],self.w) - y[i] for i, x in enumerate(sv) if x]) / sum(sv)
+        
+    def reconstruct(self, X, y):
+        self.w = np.asarray(y @ np.diag(self.lagrange_multipliers) @ np.matrix(X)).flatten()
+        sv = self.lagrange_multipliers > 1e-5
+        self.b = ((X[sv] @ self.w.T) - y[sv].T).sum() / sv.sum()
 
 
 def loadData(file):
@@ -95,9 +96,8 @@ if __name__ == "__main__":
 
     X, y = loadData("data/small")
 
-    w, b = svm.train(X, y)
-    #plotData(X, y)
+    svm.train(X, y)
+
+    Predicted = [svm.predict(x).item() for x in X]
 
 
-    for a,b in zip(X,y):
-        print(svm.predict(a))

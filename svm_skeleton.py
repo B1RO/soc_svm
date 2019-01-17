@@ -69,12 +69,28 @@ class SVM(object):
     def reconstructOld(self, X, y):
         sv = self.lagrange_multipliers > 1e-5
         self.w = np.sum([self.lagrange_multipliers[i] * y[i] * X[i] for i in range(0, len(X))], axis=0)
-        self.b = np.sum([np.dot(X[i],self.w) - y[i] for i, x in enumerate(sv) if x]) / sum(sv)
-        
+        self.b = np.sum([np.dot(X[i], self.w) - y[i] for i, x in enumerate(sv) if x]) / sum(sv)
+
     def reconstruct(self, X, y):
         self.w = np.asarray(y @ np.diag(self.lagrange_multipliers) @ np.matrix(X)).flatten()
         sv = self.lagrange_multipliers > 1e-5
         self.b = ((X[sv] @ self.w.T) - y[sv].T).sum() / sv.sum()
+
+    def plot(self, X, y):
+        linspace = np.linspace(0, 10)
+        line_y = (self.w[0] * linspace - self.b) / -self.w[1]
+        plt.plot(linspace, line_y)
+
+        sv = self.lagrange_multipliers > 1e-5
+        plt.plot(X[y == 1][:, 0], X[y == 1][:, 1], "bo")
+        plt.plot(X[y==1 * sv][:, 0], X[y==1 * sv][:, 1], "bo", markersize=14)
+        plt.plot(X[y == -1][:, 0], X[y == -1][:, 1], "ro")
+        plt.plot(X[y == -1 * sv][:, 0], X[y == -1 * sv][:, 1], "ro", markersize=14)
+        plt.xlabel("x")
+        plt.ylabel("y")
+        plt.title("Plot of hyperplane separating 2 classes using SVM")
+        plt.ylim(bottom=0)
+        plt.show()
 
 
 def loadData(file):
@@ -97,7 +113,6 @@ if __name__ == "__main__":
     X, y = loadData("data/small")
 
     svm.train(X, y)
+    svm.plot(X, y)
 
     Predicted = [svm.predict(x).item() for x in X]
-
-

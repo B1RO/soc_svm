@@ -63,8 +63,8 @@ class SVM(object):
 
         self.reconstructOld(X, y)
 
-    def predict(self, x):
-        return (self.w @ x.T) - self.b
+    def predict(self, X):
+        return X @ self.w - self.b
 
     def reconstructOld(self, X, y):
         sv = self.lagrange_multipliers > 1e-5
@@ -115,4 +115,5 @@ if __name__ == "__main__":
     svm.train(X, y)
     svm.plot(X, y)
 
-    Predicted = [svm.predict(x).item() for x in X]
+    Predicted = svm.predict(X)
+    print("Predicted:", Predicted)

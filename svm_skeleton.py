@@ -64,10 +64,7 @@ class SVM(object):
         self.reconstructOld(X, y)
 
     def predict(self, X):
-        array = []
-        for x in X:
-            array.append((self.w @ x.T) - self.b)
-        return array
+        return X @ self.w - self.b
 
     def reconstructOld(self, X, y):
         sv = self.lagrange_multipliers > 1e-5

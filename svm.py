@@ -43,10 +43,10 @@ class SVM(object):
         # Support vectors
         sv = self.lagrange_multipliers > 1e-5
 
-        self.reconstructOld(X, y)
+        self.reconstruct(X, y)
 
     def predict(self, X):
-        return X @ self.w - self.b
+        return np.sign(X @ self.w - self.b)
 
     def reconstruct(self, X, y):
         self.w = np.asarray(y @ np.diag(self.lagrange_multipliers) @ np.matrix(X)).flatten()
@@ -73,6 +73,9 @@ class SVM(object):
         plt.ylim(bottom=0)
         plt.show()
 
+    def accuracy_score(self, predicted, actual):
+        return np.sum(predicted == actual)/len(actual)
+
 
 def loadData(file):
     data = sklearn.datasets.load_svmlight_file(file);
@@ -96,5 +99,6 @@ if __name__ == "__main__":
     svm.train(X, y)
     svm.plot(X, y)
 
-    Predicted = svm.predict(X)
-    print("Predicted:", Predicted)
+    predicted = svm.predict(X)
+    print(svm.accuracy_score(predicted, y))
+    print("Predicted:", predicted)

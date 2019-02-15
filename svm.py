@@ -54,23 +54,25 @@ class SVM(object):
         self.b = ((X[sv] @ self.w.T) - y[sv].T).sum() / sv.sum()
 
     def plot(self, X, y):
-        linspace = np.linspace(0, 10)
-        line_y = (self.w[0] * linspace - self.b) / -self.w[1]
-        support0_y = (self.w[0] * linspace - self.b) / -self.w[1] + 1/np.linalg.norm(self.w)
-        support1_y = (self.w[0] * linspace - self.b) / -self.w[1] - 1 / np.linalg.norm(self.w)
-        plt.plot(linspace, line_y)
-        plt.plot(linspace, support0_y, "c")
-        plt.plot(linspace, support1_y, "m")
-
         sv = self.lagrange_multipliers > 1e-5
         plt.plot(X[y == 1][:, 0], X[y == 1][:, 1], "bo")
         plt.plot(X[y==1 * sv][:, 0], X[y==1 * sv][:, 1], "co", markersize=14)
         plt.plot(X[y == -1][:, 0], X[y == -1][:, 1], "ro")
         plt.plot(X[y == -1 * sv][:, 0], X[y == -1 * sv][:, 1], "mo", markersize=14)
+
+        axes = plt.gca()
+        ymin, ymax =  axes.get_ylim()
+        linspace = np.linspace(ymin, ymax)
+        line_y = (self.w[0] * linspace - self.b) / -self.w[1]
+        support0_y = (self.w[0] * linspace - np.dot(X[y == 1 * sv][0],self.w)) / -self.w[1]
+        support1_y = (self.w[0] * linspace - np.dot(X[y == -1 * sv][0], self.w)) / -self.w[1]
+        plt.plot(linspace, line_y)
+        plt.plot(linspace, support0_y, "c")
+        plt.plot(linspace, support1_y, "m")
         plt.xlabel("x")
         plt.ylabel("y")
         plt.title("Plot of hyperplane separating 2 classes using SVM")
-        plt.ylim(bottom=0)
+
         plt.show()
 
     def accuracy_score(self, predicted, actual):
@@ -94,7 +96,7 @@ def plotData(X, y):
 if __name__ == "__main__":
     svm = SVM()
 
-    X, y = loadData("data/small")
+    X, y = loadData("data/data_medium.training")
 
     svm.train(X, y)
     svm.plot(X, y)

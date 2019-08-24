@@ -1,6 +1,7 @@
 import sklearn
 from cvxopt.base import matrix
 from sklearn import datasets
+import math
 
 import numpy as np
 import cvxopt
@@ -12,6 +13,10 @@ class SVM(object):
     lagrange_multipliers = []
     w = np.array([])
     b = 0
+    C = math.inf
+
+    def __init__(self, C = math.inf):
+        self.C = C
 
     def buildHessian(self, X, y):
         Y = np.diag(y)
@@ -41,7 +46,7 @@ class SVM(object):
         # Lagrange multipliers
         self.lagrange_multipliers = np.ravel(solution['x'])
         # Support vectors
-        sv = self.lagrange_multipliers > 1e-5
+        sv = np.logical_and(self.lagrange_multipliers > 1e-5, self.lagrange_multipliers < self.C)
 
         self.reconstruct(X, y)
 
@@ -79,6 +84,8 @@ class SVM(object):
         return np.sum(predicted == actual)/len(actual)
 
 
+
+
 def loadData(file):
     data = sklearn.datasets.load_svmlight_file(file);
     return np.array(data[0].todense()), data[1]
@@ -94,7 +101,7 @@ def plotData(X, y):
 
 
 if __name__ == "__main__":
-    svm = SVM()
+    svm = SVM(2)
 
     X, y = loadData("data/data_medium.training")
 

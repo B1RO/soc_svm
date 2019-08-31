@@ -1,17 +1,50 @@
+from logging import warning
+
 import sklearn
 from cvxopt.base import matrix
 from sklearn import datasets
 
+
 import numpy as np
 import cvxopt
 import cvxopt.solvers
-
 import matplotlib.pyplot as plt
+from enum import Enum  # for enum34, or the stdlib version
+
+
+# from aenum import Enum  # for the aenum version
+class ClassifierType(Enum):
+    SOFT_MARGIN = "soft_margin"
+    HARD_MARGIN = "hard_margin"
+
 
 class SVM(object):
-    lagrange_multipliers = []
-    w = np.array([])
-    b = 0
+    def __init__(self, classifier_type=ClassifierType.HARD_MARGIN, _C=1):
+        if not isinstance(classifier_type, ClassifierType):
+            raise TypeError('direction must be an instance of Direction Enum')
+        if classifier_type == ClassifierType.SOFT_MARGIN and _C is self.__init__.__defaults__[1]:
+            warning("You tried to use soft_margin classification but did not specify C parameter, using default value of 1")
+        self.lagrange_multipliers = []
+        self.w = np.array([])
+        self.b = 0
+        self._C = _C
+        self._classifier_type = classifier_type
+
+    @property
+    def C(self):
+        return self._C
+
+    @C.setter
+    def C(self, value):
+        self._C = value
+
+    @property
+    def classifier_type(self):
+        return self._classifier_type
+
+    @classifier_type.setter
+    def classifier_type(self, value):
+        self._classifier_type = value
 
     def buildHessian(self, X, y):
         Y = np.diag(y)
@@ -41,7 +74,10 @@ class SVM(object):
         # Lagrange multipliers
         self.lagrange_multipliers = np.ravel(solution['x'])
         # Support vectors
-        sv = self.lagrange_multipliers > 1e-5
+        if self._classifier_type == ClassifierType.SOFT_MARGIN:
+            sv = np.logical_and(self.lagrange_multipliers > 1e-5, self.lagrange_multipliers < self.C)
+        elif self._classifier_type == ClassifierType.HARD_MARGIN:
+            sv = self.lagrange_multipliers > 1e-5
 
         self.reconstruct(X, y)
 
@@ -49,22 +85,22 @@ class SVM(object):
         return np.sign(X @ self.w - self.b)
 
     def reconstruct(self, X, y):
-        self.w = np.asarray(y @ np.diag(self.lagrange_multipliers) @ np.matrix(X)).flatten()
+        self.w = np.asarray(y @ np.diag(self.lagrange_multipliers) @ np.array(X)).flatten()
         sv = self.lagrange_multipliers > 1e-5
         self.b = ((X[sv] @ self.w.T) - y[sv].T).sum() / sv.sum()
 
     def plot(self, X, y):
         sv = self.lagrange_multipliers > 1e-5
         plt.plot(X[y == 1][:, 0], X[y == 1][:, 1], "bo")
-        plt.plot(X[y==1 * sv][:, 0], X[y==1 * sv][:, 1], "co", markersize=14)
+        plt.plot(X[y == 1 * sv][:, 0], X[y == 1 * sv][:, 1], "co", markersize=14)
         plt.plot(X[y == -1][:, 0], X[y == -1][:, 1], "ro")
         plt.plot(X[y == -1 * sv][:, 0], X[y == -1 * sv][:, 1], "mo", markersize=14)
 
         axes = plt.gca()
-        ymin, ymax =  axes.get_ylim()
+        ymin, ymax = axes.get_ylim()
         linspace = np.linspace(ymin, ymax)
         line_y = (self.w[0] * linspace - self.b) / -self.w[1]
-        support0_y = (self.w[0] * linspace - np.dot(X[y == 1 * sv][0],self.w)) / -self.w[1]
+        support0_y = (self.w[0] * linspace - np.dot(X[y == 1 * sv][0], self.w)) / -self.w[1]
         support1_y = (self.w[0] * linspace - np.dot(X[y == -1 * sv][0], self.w)) / -self.w[1]
         plt.plot(linspace, line_y)
         plt.plot(linspace, support0_y, "c")
@@ -76,11 +112,11 @@ class SVM(object):
         plt.show()
 
     def accuracy_score(self, predicted, actual):
-        return np.sum(predicted == actual)/len(actual)
+        return np.sum(predicted == actual) / len(actual)
 
 
 def loadData(file):
-    data = sklearn.datasets.load_svmlight_file(file);
+    data = sklearn.datasets.load_svmlight_file(file)
     return np.array(data[0].todense()), data[1]
 
 
@@ -94,7 +130,7 @@ def plotData(X, y):
 
 
 if __name__ == "__main__":
-    svm = SVM()
+    svm = SVM(ClassifierType.HARD_MARGIN)
 
     X, y = loadData("data/data_medium.training")
 

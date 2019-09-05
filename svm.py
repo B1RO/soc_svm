@@ -4,7 +4,6 @@ import sklearn
 from cvxopt.base import matrix
 from sklearn import datasets
 
-
 import numpy as np
 import cvxopt
 import cvxopt.solvers
@@ -18,16 +17,34 @@ class ClassifierType(Enum):
     HARD_MARGIN = "hard_margin"
 
 
+class KernelType(Enum):
+    LINEAR = "linear"
+    POLYNOMIAL = 'polynomial'
+    GAUSSIAN = "gaussian"
+    SIGMOID = "sigmoid"
+    RBF = 'rbf'
+
+
+def linear_kernel(x, y):
+    return np.dot(x, y)
+
+
+def polynomial_kernel(x, y, c, d):
+    return (np.dot(x, y) + c) ** d
+
+
 class SVM(object):
     def __init__(self, classifier_type=ClassifierType.HARD_MARGIN, _C=1):
         if not isinstance(classifier_type, ClassifierType):
             raise TypeError('direction must be an instance of Direction Enum')
         if classifier_type == ClassifierType.SOFT_MARGIN and _C is self.__init__.__defaults__[1]:
-            warning("You tried to use soft_margin classification but did not specify C parameter, using default value of 1")
+            warning(
+                "You tried to use soft_margin classification but did not specify C parameter, using default value of 1")
         self.lagrange_multipliers = []
         self.w = np.array([])
         self.b = 0
         self._C = _C
+        self._kernel = linear_kernel
         self._classifier_type = classifier_type
 
     @property
@@ -46,9 +63,17 @@ class SVM(object):
     def classifier_type(self, value):
         self._classifier_type = value
 
+    @property
+    def kernel(self):
+        return self._kernel
+
+    @kernel.setter
+    def kernel(self, value):
+        self._kernel = value
+
     def buildHessian(self, X, y):
         Y = np.diag(y)
-        H = np.dot(np.dot(np.dot(Y, X), X.T), Y)
+        H = self._kernel(np.dot(np.dot(Y, X), X.T), Y)
         H = cvxopt.matrix(H)
         return H
 
@@ -82,7 +107,8 @@ class SVM(object):
         self.reconstruct(X, y)
 
     def predict(self, X):
-        return np.sign(X @ self.w - self.b)
+
+        return np.sign(self._kernel(X, self.w) - self.b)
 
     def reconstruct(self, X, y):
         self.w = np.asarray(y @ np.diag(self.lagrange_multipliers) @ np.array(X)).flatten()
@@ -131,10 +157,11 @@ def plotData(X, y):
 
 if __name__ == "__main__":
     svm = SVM(ClassifierType.HARD_MARGIN)
-
+    svm.kernel = (lambda x, y : polynomial_kernel(x, y, 2, 2))
     X, y = loadData("data/data_medium.training")
 
     svm.train(X, y)
+
     svm.plot(X, y)
 
     predicted = svm.predict(X)

@@ -9,9 +9,9 @@ import cvxopt
 import cvxopt.solvers
 import matplotlib.pyplot as plt
 from enum import Enum  # for enum34, or the stdlib version
+import math
 
 
-# from aenum import Enum  # for the aenum version
 class ClassifierType(Enum):
     SOFT_MARGIN = "soft_margin"
     HARD_MARGIN = "hard_margin"
@@ -25,13 +25,29 @@ class KernelType(Enum):
     RBF = 'rbf'
 
 
-def linear_kernel(x, y):
+def linear_kernel_implicit(x, y):
     return np.dot(x, y)
 
 
-def polynomial_kernel(x, y, c, d):
+def polynomial_kernel_implicit(x, y, c, d):
     return (np.dot(x, y) + c) ** d
 
+
+def gaussian_kernel_implicit(x, y, sigma):
+    #TODO: Vectorize
+    P = np.empty((len(x),len(y.T)))
+    print(len(x),y.shape)
+    for i,vec1 in enumerate(x):
+        for j,vec2 in enumerate(y.T):
+            print(vec1.shape,vec2.shape)
+            diff = vec1-vec2
+            P[i][j] = np.exp(-(np.dot(diff,diff))/(2*sigma**2))
+
+    return P
+
+
+def sigmoid_kernel_implicit(x,y, kappa, nu):
+    return np.tanh(kappa*np.dot(x,y) + nu)
 
 class SVM(object):
     def __init__(self, classifier_type=ClassifierType.HARD_MARGIN, _C=1):
@@ -44,7 +60,7 @@ class SVM(object):
         self.w = np.array([])
         self.b = 0
         self._C = _C
-        self._kernel = linear_kernel
+        self._kernel = linear_kernel_implicit
         self._classifier_type = classifier_type
 
     @property
@@ -73,13 +89,14 @@ class SVM(object):
 
     def buildHessian(self, X, y):
         Y = np.diag(y)
-        H = self._kernel(np.dot(np.dot(Y, X), X.T), Y)
+        H = self._kernel(np.dot(Y, X),np.dot(X.T, Y.T))
         H = cvxopt.matrix(H)
         return H
 
     def train(self, X, y):
         n_samples, n_features = X.shape
 
+        print(X.shape)
         P = self.buildHessian(X, y)
 
         # RHS
@@ -157,7 +174,7 @@ def plotData(X, y):
 
 if __name__ == "__main__":
     svm = SVM(ClassifierType.HARD_MARGIN)
-    svm.kernel = (lambda x, y : polynomial_kernel(x, y, 2, 2))
+    svm.kernel = (lambda x, y: gaussian_kernel_implicit(x, y, 0.9,-0.1))
     X, y = loadData("data/data_medium.training")
 
     svm.train(X, y)

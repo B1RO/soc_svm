@@ -22,24 +22,21 @@ class KernelType(Enum):
     POLYNOMIAL = 'polynomial'
     GAUSSIAN = "gaussian"
     SIGMOID = "sigmoid"
-    RBF = 'rbf'
 
 
 def linear_kernel_implicit(x, y):
     return np.dot(x, y)
 
 
-def polynomial_kernel_implicit(x, y, c, d):
-    return (np.dot(x, y) + c) ** d
+def polynomial_kernel_implicit(x, y, coef0, degree):
+    return (np.dot(x, y) + coef0) ** degree
 
 
 def gaussian_kernel_implicit(x, y, sigma):
     #TODO: Vectorize
     P = np.empty((len(x),len(y.T)))
-    print(len(x),y.shape)
     for i,vec1 in enumerate(x):
         for j,vec2 in enumerate(y.T):
-            print(vec1.shape,vec2.shape)
             diff = vec1-vec2
             P[i][j] = np.exp(-(np.dot(diff,diff))/(2*sigma**2))
 
@@ -60,7 +57,7 @@ class SVM(object):
         self.w = np.array([])
         self.b = 0
         self._C = _C
-        self._kernel = linear_kernel_implicit
+        self.set_kernel(linear_kernel_implicit)
         self._classifier_type = classifier_type
 
     @property
@@ -83,9 +80,15 @@ class SVM(object):
     def kernel(self):
         return self._kernel
 
-    @kernel.setter
-    def kernel(self, value):
-        self._kernel = value
+    def set_kernel(self, type, degree=None ,gamma=None, coef0=None, kappa=None, nu=None):
+        if type == KernelType.LINEAR:
+            self._kernel = linear_kernel_implicit
+        if type == KernelType.POLYNOMIAL:
+            self._kernel = lambda x,y : polynomial_kernel_implicit(x,y,coef0, degree)
+        if type == KernelType.GAUSSIAN:
+            self._kernel = lambda x,y : gaussian_kernel_implicit(x,y, gamma)
+        if type == KernelType.SIGMOID:
+            self._kernel = lambda x,y : sigmoid_kernel_implicit(x,y, kappa, nu)
 
     def buildHessian(self, X, y):
         Y = np.diag(y)
@@ -124,13 +127,14 @@ class SVM(object):
         self.reconstruct(X, y)
 
     def predict(self, X):
-
+        print("predict")
         return np.sign(self._kernel(X, self.w) - self.b)
 
     def reconstruct(self, X, y):
         self.w = np.asarray(y @ np.diag(self.lagrange_multipliers) @ np.array(X)).flatten()
         sv = self.lagrange_multipliers > 1e-5
         self.b = ((X[sv] @ self.w.T) - y[sv].T).sum() / sv.sum()
+        self.w = self.w.reshape((-1,1))
 
     def plot(self, X, y):
         sv = self.lagrange_multipliers > 1e-5
@@ -151,8 +155,31 @@ class SVM(object):
         plt.xlabel("x")
         plt.ylabel("y")
         plt.title("Plot of hyperplane separating 2 classes using SVM")
+        plt.show()
+
+    def plot2(self, X, resolution=100):
+        x1_min = X[:,0].min() - 1
+        x1_max = X[:,0].max() + 1
+        x2_min = X[:,1].min() - 1
+        x2_max = X[:,1].max() + 1
+
+        xv, yv = np.meshgrid(np.linspace(x1_min, x1_max, 100), np.linspace(x2_min, x2_max, 100))
+
+        Z = self.predict(np.array([xv.ravel(),yv.ravel()]).T)
+        Z = Z.reshape(xv.shape)
+
+        plt.contour(xv,yv,Z,alpha=0.6)
+        plt.xlim(xv.min(),xv.max())
+        plt.ylim(yv.min(),yv.max())
+
+        sv = self.lagrange_multipliers > 1e-5
+        plt.plot(X[y == 1][:, 0], X[y == 1][:, 1], "bo")
+        plt.plot(X[y == 1 * sv][:, 0], X[y == 1 * sv][:, 1], "co", markersize=14)
+        plt.plot(X[y == -1][:, 0], X[y == -1][:, 1], "ro")
+        plt.plot(X[y == -1 * sv][:, 0], X[y == -1 * sv][:, 1], "mo", markersize=14)
 
         plt.show()
+
 
     def accuracy_score(self, predicted, actual):
         return np.sum(predicted == actual) / len(actual)
@@ -174,12 +201,11 @@ def plotData(X, y):
 
 if __name__ == "__main__":
     svm = SVM(ClassifierType.HARD_MARGIN)
-    svm.kernel = (lambda x, y: gaussian_kernel_implicit(x, y, 0.9,-0.1))
+    svm.set_kernel(KernelType.LINEAR)
     X, y = loadData("data/data_medium.training")
 
     svm.train(X, y)
-
-    svm.plot(X, y)
+    svm.plot2(X, y)
 
     predicted = svm.predict(X)
     print(svm.accuracy_score(predicted, y))

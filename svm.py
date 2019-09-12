@@ -28,8 +28,8 @@ def linear_kernel_implicit(x, y):
     return np.dot(x, y)
 
 
-def polynomial_kernel_implicit(x, y, c, d):
-    return (np.dot(x, y) + c) ** d
+def polynomial_kernel_implicit(x, y, coef0, degree):
+    return (np.dot(x, y) + coef0) ** degree
 
 
 def gaussian_kernel_implicit(x, y, sigma):
@@ -57,7 +57,7 @@ class SVM(object):
         self.w = np.array([])
         self.b = 0
         self._C = _C
-        self._kernel = linear_kernel_implicit
+        self.set_kernel(linear_kernel_implicit)
         self._classifier_type = classifier_type
 
     @property
@@ -80,9 +80,15 @@ class SVM(object):
     def kernel(self):
         return self._kernel
 
-    @kernel.setter
-    def kernel(self, value):
-        self._kernel = value
+    def set_kernel(self, type, degree=None ,gamma=None, coef0=None, kappa=None, nu=None):
+        if type == KernelType.LINEAR:
+            self._kernel = linear_kernel_implicit
+        if type == KernelType.POLYNOMIAL:
+            self._kernel = lambda x,y : polynomial_kernel_implicit(x,y,coef0, degree)
+        if type == KernelType.GAUSSIAN:
+            self._kernel = lambda x,y : gaussian_kernel_implicit(x,y, gamma)
+        if type == KernelType.SIGMOID:
+            self._kernel = lambda x,y : sigmoid_kernel_implicit(x,y, kappa, nu)
 
     def buildHessian(self, X, y):
         Y = np.diag(y)
@@ -195,7 +201,7 @@ def plotData(X, y):
 
 if __name__ == "__main__":
     svm = SVM(ClassifierType.HARD_MARGIN)
-    svm.kernel = (lambda x, y: gaussian_kernel_implicit(x, y,0.5))
+    svm.set_kernel(KernelType.LINEAR)
     X, y = loadData("data/data_medium.training")
 
     svm.train(X, y)

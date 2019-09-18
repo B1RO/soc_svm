@@ -48,18 +48,11 @@ def sigmoid_kernel_implicit(x, y, kappa, coef0):
 
 
 class SVM(object):
-    def __init__(self, classifier_type=ClassifierType.HARD_MARGIN, _C=1):
-        if not isinstance(classifier_type, ClassifierType):
-            raise TypeError('direction must be an instance of Direction Enum')
-        if classifier_type == ClassifierType.SOFT_MARGIN and _C is self.__init__.__defaults__[1]:
-            warning(
-                "You tried to use soft_margin classification but did not specify C parameter, using default value of 1")
+    def __init__(self):
         self.lagrange_multipliers = []
         self.w = np.array([])
         self.b = 0
-        self._C = _C
         self.set_kernel(linear_kernel_implicit)
-        self._classifier_type = classifier_type.SOFT_MARGIN
         self._original_X = None
         self._original_y = None
 
@@ -202,7 +195,8 @@ def plotData(X, y):
 
 
 if __name__ == "__main__":
-    svm = SVM(ClassifierType.HARD_MARGIN)
+    svm = SVM()
+    svm.classifier_type = ClassifierType.HARD_MARGIN
     svm.set_kernel(KernelType.GAUSSIAN, coef0=4, gamma=0.2)
     X, y = loadData("data/data_medium.training")
 

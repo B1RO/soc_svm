@@ -24,6 +24,11 @@ class KernelType(Enum):
     SIGMOID = "sigmoid"
 
 
+class LossType(Enum):
+    l1 = "l1"
+    l2 = "l2"
+
+
 def linear_kernel_implicit(x, y):
     return np.dot(x, y)
 
@@ -53,8 +58,12 @@ class SVM(object):
         self.w = np.array([])
         self.b = 0
         self.set_kernel(linear_kernel_implicit)
+        self._classifier_type = ClassifierType.SOFT_MARGIN
         self._original_X = None
         self._original_y = None
+        self._loss_type = LossType.l2
+        self._sv = None
+        self._C = 0.1
 
     @property
     def C(self):
@@ -63,6 +72,14 @@ class SVM(object):
     @C.setter
     def C(self, value):
         self._C = value
+
+    @property
+    def loss_type(self):
+        return self._loss_type
+
+    @loss_type.setter
+    def loss_type(self, value):
+        self._loss_type = value
 
     @property
     def classifier_type(self):
@@ -88,7 +105,10 @@ class SVM(object):
 
     def buildHessian(self, X, y):
         Y = np.diag(y)
-        H = np.dot(Y.T, np.dot(self._kernel(X, X.T), Y))
+        if self.loss_type == LossType.l2:
+            H = (np.dot(Y.T, np.dot(self._kernel(X, X.T), Y)) + np.linalg.inv(np.dot(self._C, np.identity(y.shape[0]))))
+        elif self.loss_type == LossType.l1 or self.classifier_type == ClassifierType.HARD_MARGIN:
+            H = np.dot(Y.T, np.dot(self._kernel(X, X.T), Y))+1e-10
         H = cvxopt.matrix(H)
         return H
 
@@ -117,18 +137,17 @@ class SVM(object):
         # Lagrange multipliers
         self.lagrange_multipliers = np.ravel(solution['x'])
         # Support vectors
-        if self._classifier_type == ClassifierType.SOFT_MARGIN:
-            sv = np.logical_and(self.lagrange_multipliers > 1e-5, self.lagrange_multipliers < self.C)
-        elif self._classifier_type == ClassifierType.HARD_MARGIN:
-            sv = self.lagrange_multipliers > 1e-5
+        if self._classifier_type == ClassifierType.SOFT_MARGIN and self.loss_type == LossType.l1:
+            self._sv = np.logical_and(self.lagrange_multipliers > 1e-5, self.lagrange_multipliers < self.C)
+        elif self._classifier_type == ClassifierType.HARD_MARGIN or self.loss_type == LossType.l2:
+            self._sv = self.lagrange_multipliers > 1e-5
+
 
     def predict(self, X):
-        print("predict")
         y = np.diag(self._original_y)
-        sv = self.lagrange_multipliers > 1e-5
         b = np.sum(
-            np.dot(self._kernel(self._original_X[sv], self._original_X.T), np.dot(y, self.lagrange_multipliers)) -
-            self._original_y[sv]) / sv.sum()
+            np.dot(self._kernel(self._original_X[self._sv], self._original_X.T), np.dot(y, self.lagrange_multipliers)) -
+            self._original_y[self._sv]) / self._sv.sum()
 
         return np.sign(np.dot(self._kernel(X, self._original_X.T), np.dot(y, self.lagrange_multipliers))) + b
 
@@ -168,11 +187,10 @@ class SVM(object):
         plt.xlim(xv.min(), xv.max())
         plt.ylim(yv.min(), yv.max())
 
-        sv = self.lagrange_multipliers > 1e-5
         plt.plot(X[y == 1][:, 0], X[y == 1][:, 1], "bo")
-        plt.plot(X[y == 1 * sv][:, 0], X[y == 1 * sv][:, 1], "co", markersize=14)
+        plt.plot(X[y == 1 * self._sv][:, 0], X[y == 1 * self._sv][:, 1], "co", markersize=14)
         plt.plot(X[y == -1][:, 0], X[y == -1][:, 1], "ro")
-        plt.plot(X[y == -1 * sv][:, 0], X[y == -1 * sv][:, 1], "mo", markersize=14)
+        plt.plot(X[y == -1 * self._sv][:, 0], X[y == -1 * self._sv][:, 1], "mo", markersize=14)
 
         plt.show()
 
@@ -196,8 +214,9 @@ def plotData(X, y):
 
 if __name__ == "__main__":
     svm = SVM()
-    svm.classifier_type = ClassifierType.HARD_MARGIN
-    svm.set_kernel(KernelType.GAUSSIAN, coef0=4, gamma=0.2)
+    svm.classifier_type = ClassifierType.SOFT_MARGIN
+    svm.set_kernel(KernelType.SIGMOID, coef0=-10, kappa=1)
+    svm.loss_type = LossType.l2
     X, y = loadData("data/data_medium.training")
 
     svm.train(X, y)

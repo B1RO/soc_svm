@@ -106,34 +106,38 @@ class SVM(object):
     def buildHessian(self, X, y):
         Y = np.diag(y)
         if self.loss_type == LossType.l2:
-            H = (np.dot(Y.T, np.dot(self._kernel(X, X.T), Y)) + self._C**(-1)* np.eye(y.shape[0]))
+            H = (np.dot(Y.T, np.dot(self._kernel(X, X.T), Y)) + self._C ** (-1) * np.eye(y.shape[0]))
         elif self.loss_type == LossType.l1 or self.classifier_type == ClassifierType.HARD_MARGIN:
             H = np.dot(Y.T, np.dot(self._kernel(X, X.T), Y))
             H = H + 1e-10
         H = cvxopt.matrix(H)
         return H
 
-    def train(self, X, y):
-        n_samples, n_features = X.shape
-        self._original_X = X
-        self._original_y = y
+    def setupOptimization(self):
+        n_samples, n_features = self._original_X.shape
 
         print(X.shape)
-        P = self.buildHessian(X, y)
+        P = self.buildHessian(self._original_X, self._original_y)
 
         # RHS
         q = cvxopt.matrix(np.ones(n_samples) * -1)
 
         # Equality constraint
-        A = cvxopt.matrix(y, (1, n_samples))
+        A = cvxopt.matrix(self._original_y, (1, n_samples))
         b: matrix = cvxopt.matrix(0.0)
 
         # Inequality constraint
         G = cvxopt.matrix(np.diag(np.ones(n_samples) * -1))
         h = cvxopt.matrix(np.zeros(n_samples))
 
+        return P, q, G, h, A, b
+
+    def train(self, X, y):
+        self._original_X = X
+        self._original_y = y
+
         # Solve QP problem
-        solution = cvxopt.solvers.qp(P, q, G, h, A, b)
+        solution = cvxopt.solvers.qp(*self.setupOptimization())
 
         # Lagrange multipliers
         self.lagrange_multipliers = np.ravel(solution['x'])
@@ -142,7 +146,6 @@ class SVM(object):
             self._sv = np.logical_and(self.lagrange_multipliers > 1e-5, self.lagrange_multipliers <= self.C)
         else:
             self._sv = self.lagrange_multipliers > 1e-5
-
 
     def predict(self, X):
         y = np.diag(self._original_y)

@@ -138,8 +138,8 @@ class SVM(object):
         self.lagrange_multipliers = np.ravel(solution['x'])
         # Support vectors
         if self._classifier_type == ClassifierType.SOFT_MARGIN and self.loss_type == LossType.l1:
-            self._sv = np.logical_and(self.lagrange_multipliers > 1e-5, self.lagrange_multipliers < self.C)
-        elif self._classifier_type == ClassifierType.HARD_MARGIN or self.loss_type == LossType.l2:
+            self._sv = np.logical_and(self.lagrange_multipliers > 1e-5, self.lagrange_multipliers <= self.C)
+        else:
             self._sv = self.lagrange_multipliers > 1e-5
 
 

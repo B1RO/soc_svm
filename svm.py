@@ -108,7 +108,8 @@ class SVM(object):
         if self.loss_type == LossType.l2:
             H = (np.dot(Y.T, np.dot(self._kernel(X, X.T), Y)) + np.linalg.inv(np.dot(self._C, np.identity(y.shape[0]))))
         elif self.loss_type == LossType.l1 or self.classifier_type == ClassifierType.HARD_MARGIN:
-            H = np.dot(Y.T, np.dot(self._kernel(X, X.T), Y))+1e-10
+            H = np.dot(Y.T, np.dot(self._kernel(X, X.T), Y))
+            H = H + 1e-10
         H = cvxopt.matrix(H)
         return H
 

@@ -99,14 +99,16 @@ class SVM(object):
         Y = np.diag(y)
         if self.loss_type == LossType.l2:
             H = (np.dot(Y.T, np.dot(self._kernel(X, X.T), Y)) + self._C ** (-1) * np.eye(y.shape[0]))
-        elif self.loss_type == LossType.l1 or self.classifier_type == ClassifierType.HARD_MARGIN:
+        elif self.loss_type == LossType.l1 and self.classifier_type == ClassifierType.SOFT_MARGIN:
             H = np.dot(Y.T, np.dot(self._kernel(X, X.T), Y))
             H = H + (1e-10*np.diag(H))
+        elif self.classifier_type == ClassifierType.HARD_MARGIN:
+            H = np.dot(Y.T, np.dot(self._kernel(X, X.T), Y))
         H = cvxopt.matrix(H)
         return H
 
     def setupOptimization(self):
-        n_samples, n_features = self._original_X.shape
+        n_samples, n_features = self._original_X.shapec
 
         print(X.shape)
         P = self.buildHessian(self._original_X, self._original_y)

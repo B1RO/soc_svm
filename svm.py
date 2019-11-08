@@ -1,12 +1,15 @@
 from enum import Enum
-import sklearn.datasets
+
 import cvxopt
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import sklearn.datasets
+
 
 class ClassifierType(Enum):
     SOFT_MARGIN = "soft_margin"
     HARD_MARGIN = "hard_margin"
+
 
 class KernelType(Enum):
     LINEAR = "linear"
@@ -18,6 +21,12 @@ class KernelType(Enum):
 class LossType(Enum):
     l1 = "l1"
     l2 = "l2"
+
+
+def append_bias_column(X, beta):
+    n, m = X.shape
+    biasColumn = np.ones((n, 1)) * beta
+    return np.hstack((X, biasColumn))
 
 
 def linear_kernel_implicit(x, y):
@@ -50,11 +59,13 @@ class SVM(object):
         self.b = 0
         self.set_kernel(linear_kernel_implicit)
         self._classifier_type = ClassifierType.SOFT_MARGIN
-        self._original_X = None
-        self._original_y = None
+        self._X = None
+        self._y = None
         self._loss_type = LossType.l2
         self._sv = None
         self._C = 0.1
+        self._no_bias = False
+        self._beta = 1
 
     @property
     def C(self):
@@ -81,6 +92,22 @@ class SVM(object):
         self._classifier_type = value
 
     @property
+    def beta(self):
+        return self._beta
+
+    @classifier_type.setter
+    def beta(self, value):
+        self._beta = value
+
+    @property
+    def no_bias(self):
+        return self._no_bias
+
+    @no_bias.setter
+    def no_bias(self, value):
+        self._no_bias = value
+
+    @property
     def kernel(self):
         return self._kernel
 
@@ -94,30 +121,29 @@ class SVM(object):
         if type == KernelType.SIGMOID:
             self._kernel = lambda x, y: sigmoid_kernel_implicit(x, y, kappa, coef0)
 
-
     def buildHessian(self, X, y):
         Y = np.diag(y)
         if self.loss_type == LossType.l2:
             H = (np.dot(Y.T, np.dot(self._kernel(X, X.T), Y)) + self._C ** (-1) * np.eye(y.shape[0]))
         elif self.loss_type == LossType.l1 and self.classifier_type == ClassifierType.SOFT_MARGIN:
             H = np.dot(Y.T, np.dot(self._kernel(X, X.T), Y))
-            H = H + (1e-10*np.diag(H))
+            H = H + (1e-10 * np.diag(H))
         elif self.classifier_type == ClassifierType.HARD_MARGIN:
             H = np.dot(Y.T, np.dot(self._kernel(X, X.T), Y))
         H = cvxopt.matrix(H)
         return H
 
     def setupOptimization(self):
-        n_samples, n_features = self._original_X.shapec
+        n_samples, n_features = self._X.shape
 
         print(X.shape)
-        P = self.buildHessian(self._original_X, self._original_y)
+        P = self.buildHessian(self._X, self._y)
 
         # RHS
         q = cvxopt.matrix(np.ones(n_samples) * -1)
 
         # Equality constraint
-        A = cvxopt.matrix(self._original_y, (1, n_samples))
+        A = cvxopt.matrix(self._y, (1, n_samples))
         b: matrix = cvxopt.matrix(0.0)
 
         # Inequality constraint
@@ -127,8 +153,11 @@ class SVM(object):
         return P, q, G, h, A, b
 
     def train(self, X, y):
-        self._original_X = X
-        self._original_y = y
+        if self._no_bias:
+            self._X = append_bias_column(X,self._beta)
+        else:
+            self._X = X
+        self._y = y
 
         # Solve QP problem
         solution = cvxopt.solvers.qp(*self.setupOptimization())
@@ -142,12 +171,17 @@ class SVM(object):
             self._sv = self.lagrange_multipliers > 1e-5
 
     def predict(self, X):
-        y = np.diag(self._original_y)
-        b = np.sum(
-            np.dot(self._kernel(self._original_X[self._sv], self._original_X.T), np.dot(y, self.lagrange_multipliers)) -
-            self._original_y[self._sv]) / self._sv.sum()
+        y = np.diag(self._y)
+        print("haf")
+        if self.no_bias:
+            XwithBias = append_bias_column(X,self._beta)
+            return np.sign(np.dot(self._kernel(XwithBias, self._X.T), np.dot(y, self.lagrange_multipliers)))
+        else:
+            b = np.sum(
+                np.dot(self._kernel(self._X[self._sv], self._X.T), np.dot(y, self.lagrange_multipliers)) -
+                self._y[self._sv]) / self._sv.sum()
 
-        return np.sign(np.dot(self._kernel(X, self._original_X.T), np.dot(y, self.lagrange_multipliers))) + b
+            return np.sign(np.dot(self._kernel(X, self._X.T), np.dot(y, self.lagrange_multipliers))) + b
 
     def plot(self, X, y):
         sv = self.lagrange_multipliers > 1e-5
@@ -171,6 +205,9 @@ class SVM(object):
         plt.show()
 
     def plot2(self, X, y, resolution=100):
+        print("plot2")
+        if(self.no_bias):
+            X = append_bias_column(X,self._beta)
         x1_min = X[:, 0].min() - 1
         x1_max = X[:, 0].max() + 1
         x2_min = X[:, 1].min() - 1
@@ -213,6 +250,7 @@ def plotData(X, y):
 if __name__ == "__main__":
     svm = SVM()
     svm.classifier_type = ClassifierType.SOFT_MARGIN
+    svm.no_bias = False
     svm.set_kernel(KernelType.SIGMOID, coef0=-10, kappa=1)
     svm.loss_type = LossType.l2
     X, y = loadData("data/data_medium.training")

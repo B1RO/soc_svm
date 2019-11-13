@@ -6,6 +6,10 @@ import numpy as np
 import sklearn.datasets
 
 
+from svm_metrics import accuracy_score, balanced_accuracy_score, true_positives, false_positives, true_negatives, \
+    false_negatives
+
+
 class ClassifierType(Enum):
     SOFT_MARGIN = "soft_margin"
     HARD_MARGIN = "hard_margin"
@@ -38,7 +42,6 @@ def polynomial_kernel_implicit(x, y, coef0, degree):
 
 
 def gaussian_kernel_implicit(x, y, sigma):
-    # TODO: Vectorize
     P = np.empty((len(x), len(y.T)))
     for i, vec1 in enumerate(x):
         for j, vec2 in enumerate(y.T):
@@ -172,7 +175,6 @@ class SVM(object):
 
     def predict(self, X):
         y = np.diag(self._y)
-        print("haf")
         if self.no_bias:
             XwithBias = append_bias_column(X,self._beta)
             return np.sign(np.dot(self._kernel(XwithBias, self._X.T), np.dot(y, self.lagrange_multipliers)))
@@ -182,6 +184,8 @@ class SVM(object):
                 self._y[self._sv]) / self._sv.sum()
 
             return np.sign(np.dot(self._kernel(X, self._X.T), np.dot(y, self.lagrange_multipliers))) + b
+
+
 
     def plot(self, X, y):
         sv = self.lagrange_multipliers > 1e-5
@@ -250,7 +254,7 @@ def plotData(X, y):
 if __name__ == "__main__":
     svm = SVM()
     svm.classifier_type = ClassifierType.SOFT_MARGIN
-    svm.no_bias = False
+    svm.no_bias = True
     svm.set_kernel(KernelType.SIGMOID, coef0=-10, kappa=1)
     svm.loss_type = LossType.l2
     X, y = loadData("data/data_medium.training")
@@ -259,5 +263,7 @@ if __name__ == "__main__":
     svm.plot2(X, y)
 
     predicted = svm.predict(X)
-    print(svm.accuracy_score(predicted, y))
+    print("accuracy", accuracy_score(y,predicted))
+    print("balanced_accuracy", balanced_accuracy_score(y,predicted))
+    print("TP", true_positives(y,predicted), "FP", false_positives(y,predicted), "TN", true_negatives(y,predicted), "FN", false_negatives(y,predicted) )
     print("Predicted:", predicted)

@@ -8,6 +8,7 @@ import sklearn.datasets
 
 from svm_metrics import accuracy_score, balanced_accuracy_score, true_positives, false_positives, true_negatives, \
     false_negatives
+from validation import get_dataset_splits, get_stratified_dataset_splits
 
 
 class ClassifierType(Enum):
@@ -263,7 +264,4 @@ if __name__ == "__main__":
     svm.plot2(X, y)
 
     predicted = svm.predict(X)
-    print("accuracy", accuracy_score(y,predicted))
-    print("balanced_accuracy", balanced_accuracy_score(y,predicted))
-    print("TP", true_positives(y,predicted), "FP", false_positives(y,predicted), "TN", true_negatives(y,predicted), "FN", false_negatives(y,predicted) )
-    print("Predicted:", predicted)
+    print(get_stratified_dataset_splits(y,5))

@@ -1,4 +1,6 @@
 import warnings
+import numpy as np;
+import itertools
 
 def product_dict(**kwargs):
     keys = kwargs.keys()

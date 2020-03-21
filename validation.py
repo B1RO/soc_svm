@@ -12,7 +12,7 @@ def train_test_split(X, y, test_size):
     X_copy = X_copy[indices]
     y_copy = y_copy[indices]
     split_point = int(n * test_size)
-    return X_copy[:split_point], X_copy[split_point:], y_copy[:split_point], y_copy[split_point:]
+    return X_copy[:split_point], y_copy[:split_point], X_copy[split_point:], y_copy[split_point:]
 
 def train_validation_test_split(X,y, test_size):
     X_train, X_test, y_train, y_test = train_test_split(X,y)
@@ -21,6 +21,7 @@ def train_validation_test_split(X,y, test_size):
 
 def get_dataset_splits(y, n):
     dataset_indices = list(range(len(y)))
+    np.random.shuffle(dataset_indices);
     return np.array_split(dataset_indices, n)
 
 

@@ -40,28 +40,36 @@ def false_negatives(y_true, y_predict):
 def precision_score(y_true, y_predict):
     tp = true_positives(y_true, y_predict)
     fp = false_positives(y_true, y_predict)
+    if(tp == 0 and fp == 0):
+        return 0
     return tp / (tp + fp)
 
 
 def recall_score(y_true, y_predict):
     tp = true_positives(y_true, y_predict)
     fn = false_negatives(y_true, y_predict)
+    if(tp == 0 and fn == 0):
+        return 0
     return tp / (tp + fn)
 
 
 def f1_score(y_true, y_predict):
     precision = precision_score(y_true, y_predict)
     recall = recall_score(y_true, y_predict)
+    if(precision == 0 and recall == 0):
+        return 0
     return 2 * (precision * recall) / (precision + recall)
 
 
 def specificity_score(y_true, y_predict):
     tn = true_negatives(y_true, y_predict)
     fp = false_positives(y_true, y_predict)
+    if(tn + fp == 0):
+        return 0
     return tn / (tn + fp)
 
 
-def AOC_score(y_true, y_predict):
+def AUC_score(y_true, y_predict):
     tpr = recall_score(y_true, y_predict)
     fpr = 1 - specificity_score(y_true, y_predict)
     return np.trapz([0, tpr, 1, 0], [0, fpr, 1, 1])

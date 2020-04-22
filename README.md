@@ -1,4 +1,4 @@
-#Návod na použití
+# Návod na použití
 
 1. Je nutno mit nainstalovanu Anacondu z
 https://www.anaconda.com/distribution/#download-section.
